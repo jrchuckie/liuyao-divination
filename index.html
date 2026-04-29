@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>六爻卜卦 · 问事占筮</title>
 <style>
 :root {
@@ -25,7 +25,7 @@
   --r: 12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Noto Serif SC','STSong',serif;min-height:100vh;padding-bottom:80px}
+body{background:var(--bg);color:var(--text);font-family:'Noto Serif SC','STSong',serif;min-height:100vh;padding-bottom:max(80px,env(safe-area-inset-bottom,0px))}
 
 /* ── 顶部金色光晕 ── */
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 90% 55% at 50% -8%,rgba(201,168,76,.12),rgba(232,201,106,.04) 30%,transparent 65%);pointer-events:none;z-index:0}
@@ -329,6 +329,77 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
 .hidden{display:none!important}
 .fade-in{animation:fin .5s ease}
 @keyframes fin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ============================================================
+   📱 移动端响应式适配
+   ============================================================ */
+@media (max-width: 480px) {
+  /* 整体容器 */
+  .wrap { padding: 0 14px; }
+
+  /* 标题区 */
+  .hd { padding: 36px 0 24px; }
+  .hd-icon { font-size: 2.2rem; }
+  .hd h1 { font-size: 1.4rem; letter-spacing: .25em; }
+  .hd p  { font-size: .72rem; letter-spacing: .18em; }
+
+  /* 卡片 */
+  .card { padding: 18px 16px; margin-bottom: 14px; }
+  .clabel { font-size: .65rem; }
+
+  /* 问题输入 */
+  textarea { font-size: .92rem; min-height: 88px; padding: 12px 13px; }
+  .pills { gap: 5px; }
+  .pill { font-size: .74rem; padding: 4px 10px; }
+
+  /* 进度点 */
+  .dots { gap: 6px; margin-bottom: 16px; }
+  .dot  { width: 26px; height: 26px; font-size: .6rem; }
+
+  /* 铜钱区——手机上三枚横排要紧凑 */
+  .coins-wrap { gap: 16px; min-height: 100px; }
+  .coin { width: 64px; height: 64px; }
+  .coin::before { width: 18px; height: 18px; }
+  .coin-label { font-size: .7rem; }
+
+  /* 掷卦大按钮 */
+  .btn-shake { font-size: 1rem; padding: 16px; letter-spacing: .15em; }
+
+  /* 已摇出的爻列表 */
+  .yao-built-item { padding: 5px 8px; gap: 7px; }
+  .ybi-glyph { width: 42px; }
+  .ybi-label { font-size: .68rem; }
+
+  /* 卦形展示 */
+  .hex-row { gap: 10px; }
+  .hex-name { font-size: .95rem; letter-spacing: .15em; }
+  .yl-glyph { width: 52px; height: 9px; }
+  .yl-pos  { font-size: .58rem; }
+  .yl-meta { gap: 3px; }
+  .yl-lq, .yl-dz, .yl-ls { font-size: .6rem; }
+  .b-shi, .b-ying, .b-kong { font-size: .55rem; padding: 1px 4px; }
+  .hex-arrow { font-size: 1rem; padding-top: 44px; }
+
+  /* AI 解读 */
+  .ai-body  { font-size: .88rem; padding: 16px; line-height: 1.9; }
+  .jx-badge { font-size: 1.15rem; padding: 8px 20px; letter-spacing: .2em; }
+  .jx-text  { font-size: .88rem; line-height: 1.9; }
+
+  /* 按钮 */
+  .btn { font-size: .87rem; padding: 12px; }
+  .btn-ghost { font-size: .8rem; }
+}
+
+/* 超小屏（≤360px，如 iPhone SE） */
+@media (max-width: 360px) {
+  .hd h1 { font-size: 1.25rem; }
+  .coins-wrap { gap: 10px; }
+  .coin { width: 56px; height: 56px; }
+  .coin::before { width: 16px; height: 16px; }
+  .yl-glyph { width: 44px; }
+  .hex-arrow { display: none; } /* 极小屏卦形箭头隐藏，上下排列 */
+  .hex-row { flex-direction: column; align-items: center; gap: 16px; }
+}
 </style>
 </head>
 <body>
