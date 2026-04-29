@@ -308,7 +308,8 @@ textarea::placeholder{color:var(--dim)}
   0%,100%{box-shadow:0 0 25px rgba(200,60,60,.15),0 0 50px rgba(200,60,60,.06),inset 0 0 20px rgba(200,60,60,.08)}
   50%{box-shadow:0 0 35px rgba(200,60,60,.25),0 0 70px rgba(200,60,60,.1),inset 0 0 25px rgba(200,60,60,.12)}
 }
-.jx-text{line-height:2;white-space:pre-wrap;word-break:break-all;font-size:.95rem}
+.jx-text{line-height:2;word-break:break-all;font-size:.95rem}
+.jx-text p{margin:0 0 1em;word-break:break-all}
 
 /* 吉凶粒子爆炸容器 */
 .jx-particles{position:absolute;inset:0;pointer-events:none;overflow:visible}
@@ -798,19 +799,21 @@ ${detailStr}
 - 绝对不要用"旺衰""生扶""化合""进神退神"等专业术语直接堆砌，必须转化成普通人听得懂的话
 - 字数800-1000字，不要太短也不要废话连篇`;
 
-    // 双接口：内网优先，公网兜底
-  const APIS = [
+    // 根据域名选接口：内网域名走 DeepSeek，其他走 MiniMax
+  const isIntranet = location.hostname.includes('xiaohongshu.com') || location.port !== '';
+  const APIS = isIntranet ? [
     {
       url: 'https://redservingapi.devops.xiaohongshu.com/v1/chat/completions',
       headers: {'Content-Type':'application/json','api-key':'QST7195758dfe9e889d81be2f7174de73b7'},
       body: {model:'deepseek-v3-0324', messages:[{role:'user',content:prompt}], stream:true, max_tokens:3000, temperature:.85},
-      timeout: 6000
-    },
+      timeout: 30000, label:'内网 AI'
+    }
+  ] : [
     {
       url: 'https://api.minimax.chat/v1/chat/completions',
       headers: {'Content-Type':'application/json','Authorization':'Bearer sk-cp-UmQpKW3K2Tz2IchUZ1qaC7QUQi2Fsfl4OiG7daWmgG-YIFw3yzaPCitLZKmnONuaCGedRuAm3nPZn-XD4BVVmx27xi0La8yZ8pfOOcHTMv5dP7QKYNxAnP8'},
-      body: {model:'MiniMax-M2.5-highspeed', messages:[{role:'system',content:'你是精通纳甲筮法的易学大师，直接输出解读内容，不要任何思考过程标签。'},{role:'user',content:prompt}], stream:true, max_tokens:3000, temperature:.85},
-      timeout: 30000
+      body: {model:'MiniMax-M2.5-highspeed', messages:[{role:'system',content:'你是精通纳甲筮法的易学大师，直接输出解读内容，不要任何思考过程。'},{role:'user',content:prompt}], stream:true, max_tokens:3000, temperature:.85},
+      timeout: 60000, label:'MiniMax AI'
     }
   ];
 
@@ -863,7 +866,7 @@ ${detailStr}
   let success=false;
   for(const api of APIS){
     try{
-      stat.textContent = api.url.includes('minimax') ? '正在连接备用 AI…' : '正在连接 AI…';
+      stat.textContent = `正在连接 ${api.label}…`;
       const ac=new AbortController();
       const timer=setTimeout(()=>ac.abort(), api.timeout);
       const resp=await fetch(api.url,{method:'POST',signal:ac.signal,headers:api.headers,body:JSON.stringify(api.body)});
@@ -901,15 +904,18 @@ function renderJiXiong(body){
   const m=text.match(/【(大吉|小吉|平|小凶|大凶)】/);
   if(!m)return;
   const key=m[1]; const cfg=map[key]||map['平'];
-  // 把 【X】 这一行替换成 HTML badge
-  const html=body.textContent
-    .replace(/【(大吉|小吉|平|小凶|大凶)】/g,
-      `\n`)  // 先暂时移除，后面插 badge
+  // 移除吉凶标签行，保留其余文字（段落换行保留）
+  const cleaned=text
+    .replace(/\n?【(大吉|小吉|平|小凶|大凶)】\n?/g, '\n')  // 移除标签，保留换行
+    .replace(/\n{3,}/g,'\n\n')  // 最多双空行
     .trim();
+  // 将换行转成 <br>，段落间距保持
+  const htmlText=cleaned
+    .split('\n\n').map(p=>`<p style="margin:0 0 1em">${p.replace(/\n/g,'<br>')}</p>`).join('');
   // 构建最终 HTML
   body.innerHTML=
     `<div class="jx-badge ${cfg.cls}"><div class="jx-particles" id="jxp"></div>${cfg.icon} ${cfg.label}</div>`+
-    `<div class="jx-text">${html.replace(/\n/g,'<br>')}</div>`;
+    `<div class="jx-text">${htmlText}</div>`;
 
   // 大吉/大凶 粒子爆炸效果
   if(key==='大吉'||key==='大凶'){
