@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>六爻卜卦 · 问事占筮</title>
+<style>
+:root {
+  --bg: #09090d;
+  --s1: #111118;
+  --s2: #18181f;
+  --s3: #20202a;
+  --border: #2a2a3a;
+  --gold: #c9a84c;
+  --gold-lt: #e8c96a;
+  --gold-dk: #6a4e1a;
+  --yang: #e8c96a;
+  --yin: #7a9ecf;
+  --move: #e07840;
+  --good: #5cb87a;
+  --bad: #c45555;
+  --text: #e6e0d8;
+  --dim: #706860;
+  --mid: #a89880;
+  --r: 12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Serif SC','STSong',serif;min-height:100vh;padding-bottom:80px}
+
+/* ── 顶部金色光晕 ── */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 90% 55% at 50% -8%,rgba(201,168,76,.12),rgba(232,201,106,.04) 30%,transparent 65%);pointer-events:none;z-index:0}
+
+/* ── 底部深蓝/紫色光晕 ── */
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 40% at 50% 105%,rgba(60,40,140,.1),rgba(30,50,100,.06) 40%,transparent 60%);pointer-events:none;z-index:0}
+
+/* ── 粒子 Canvas ── */
+#stardust{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+.wrap{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:0 20px}
+
+/* header */
+.hd{text-align:center;padding:52px 0 36px}
+.hd-icon{font-size:2.8rem;display:block;margin-bottom:10px;animation:float 4s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(201,168,76,.4))}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.hd h1{font-size:1.85rem;letter-spacing:.4em;color:var(--gold-lt);text-shadow:0 0 40px rgba(201,168,76,.35);font-weight:normal}
+.hd p{color:var(--dim);font-size:.78rem;letter-spacing:.35em;margin-top:8px;text-shadow:0 0 30px rgba(201,168,76,.15)}
+
+/* card - 毛玻璃 */
+.card{background:rgba(17,17,24,.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(201,168,76,.15);border-radius:var(--r);padding:26px;margin-bottom:18px;box-shadow:0 4px 30px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.03)}
+.clabel{font-size:.7rem;color:var(--gold);letter-spacing:.25em;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.clabel::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(201,168,76,.2),transparent)}
+
+/* textarea */
+textarea{width:100%;background:rgba(24,24,31,.8);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:.97rem;line-height:1.85;padding:15px 17px;min-height:105px;resize:vertical;outline:none;transition:border-color .2s,box-shadow .2s}
+textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.1),0 0 20px rgba(201,168,76,.05)}
+textarea::placeholder{color:var(--dim)}
+
+/* pills */
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.pill{padding:5px 13px;border-radius:20px;background:rgba(24,24,31,.7);border:1px solid var(--border);color:var(--dim);font-size:.8rem;cursor:pointer;transition:all .18s;font-family:inherit}
+.pill:hover{border-color:var(--gold-dk);color:var(--text);background:rgba(32,32,42,.8)}
+
+/* buttons */
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:8px;font-family:inherit;font-size:.93rem;letter-spacing:.18em;cursor:pointer;transition:all .2s;margin-top:14px}
+.btn-gold{background:linear-gradient(135deg,#6a3e0a,#c9a84c,#e8c96a);color:#180e00;font-weight:700;box-shadow:0 4px 18px rgba(201,168,76,.22)}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(201,168,76,.32)}
+.btn-gold:active{transform:translateY(0)}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border);font-size:.85rem;margin-top:10px}
+.btn-ghost:hover{color:var(--text);border-color:var(--gold-dk)}
+.hint{font-size:.74rem;color:var(--dim);margin-top:12px;line-height:1.75}
+
+/* === 摇卦区 === */
+.q-echo{background:rgba(201,168,76,.04);border-left:3px solid var(--gold-dk);padding:11px 15px;border-radius:0 6px 6px 0;font-size:.88rem;color:var(--mid);margin-bottom:22px}
+
+/* 进度六点 */
+.dots{display:flex;justify-content:center;gap:10px;margin-bottom:22px}
+.dot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);color:var(--dim);font-size:.68rem;display:flex;align-items:center;justify-content:center;transition:all .3s;cursor:default;flex-direction:column;gap:1px}
+.dot.done{background:var(--gold-dk);border-color:var(--gold);color:var(--gold-lt)}
+.dot.active{border-color:var(--gold);color:var(--gold);position:relative;animation:dotPulse 2s ease-in-out infinite}
+.dot .dot-yao{font-size:.55rem;opacity:.7}
+.dot.active .dot-core{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--gold-lt);animation:corePulse 1.5s ease-in-out infinite}
+.dot.active .dot-ring{position:absolute;width:30px;height:30px;border-radius:50%;border:1px solid rgba(201,168,76,.4);animation:ringExpand 2s ease-out infinite}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 6px rgba(201,168,76,.3),0 0 12px rgba(201,168,76,.1)}50%{box-shadow:0 0 14px rgba(201,168,76,.5),0 0 24px rgba(201,168,76,.15)}}
+@keyframes corePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+@keyframes ringExpand{0%{transform:scale(1);opacity:.6}100%{transform:scale(2);opacity:0}}
+
+/* 铜钱脉冲光环 */
+@keyframes coinPulse{0%,100%{box-shadow:0 0 8px rgba(201,168,76,.15),0 0 16px rgba(201,168,76,.05)}50%{box-shadow:0 0 14px rgba(201,168,76,.35),0 0 28px rgba(201,168,76,.12)}}
+@keyframes coinBurst{0%{box-shadow:0 0 30px rgba(232,201,106,.6),0 0 60px rgba(201,168,76,.3),0 0 0 0 rgba(201,168,76,.4)}100%{box-shadow:0 0 0 rgba(201,168,76,0),0 0 0 rgba(201,168,76,0),0 0 0 30px rgba(201,168,76,0)}}
+.coin-burst{animation:coinBurst .7s ease-out!important}
+
+/* 铜钱 —— 古铜方孔造型 */
+.coins-wrap{display:flex;justify-content:center;gap:28px;min-height:120px;align-items:center;margin:14px 0}
+.coin-outer{display:flex;flex-direction:column;align-items:center;gap:8px}
+.coin{
+  width:80px;height:80px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;flex-shrink:0;
+  /* 古铜底色 */
+  background:
+    radial-gradient(circle at 38% 28%, #f0d080 0%, #c8920a 30%, #8a5c00 65%, #5a3800 100%);
+  box-shadow:
+    0 0 0 3px #7a5200,
+    0 0 0 5px #c89020,
+    0 0 0 7px #5a3800,
+    0 6px 24px rgba(100,60,0,.7),
+    inset 0 2px 4px rgba(255,220,80,.35),
+    inset 0 -2px 4px rgba(0,0,0,.5);
+  cursor:default;
+  animation:coinPulse 1.5s ease-in-out infinite;
+}
+/* 方孔 */
+.coin::before{
+  content:'';position:absolute;
+  width:22px;height:22px;
+  background:var(--bg);
+  border:2px solid #5a3800;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.8), 0 0 0 1px #a07020;
+}
+/* 磨损光晕 */
+.coin::after{
+  content:'';position:absolute;inset:6px;border-radius:50%;
+  background:radial-gradient(circle at 35% 25%, rgba(255,240,140,.22), transparent 55%);
+  pointer-events:none;
+}
+/* 阳面：金色高光纹路 */
+.coin-yang{
+  background:
+    radial-gradient(circle at 38% 28%, #f8e090 0%, #d4a020 25%, #9a6800 55%, #6a3e00 100%);
+  box-shadow:
+    0 0 0 3px #8a6000,
+    0 0 0 5px #d4a020,
+    0 0 0 7px #6a3e00,
+    0 6px 28px rgba(180,110,0,.65),
+    inset 0 2px 5px rgba(255,230,80,.4),
+    inset 0 -2px 4px rgba(0,0,0,.5);
+}
+/* 阴面：深铜暗色 */
+.coin-yin{
+  background:
+    radial-gradient(circle at 38% 28%, #c09050 0%, #7a5010 35%, #4a2e00 70%, #2a1800 100%);
+  box-shadow:
+    0 0 0 3px #3a2000,
+    0 0 0 5px #7a5010,
+    0 0 0 7px #2a1800,
+    0 6px 20px rgba(60,30,0,.8),
+    inset 0 2px 4px rgba(200,150,60,.2),
+    inset 0 -2px 4px rgba(0,0,0,.6);
+}
+/* 翻转动效 */
+.coin-spin{animation:cspin .55s cubic-bezier(.15,.85,.3,1)}
+@keyframes cspin{
+  0%  {transform:rotateY(0deg) scale(.5);opacity:.15}
+  40% {transform:rotateY(90deg) scale(.8)}
+  70% {transform:rotateY(250deg) scale(1.08)}
+  100%{transform:rotateY(360deg) scale(1);opacity:1}
+}
+/* 字幕：阴/阳 */
+.coin-label{font-size:.75rem;letter-spacing:.1em;font-weight:bold}
+.coin-label.yang{color:var(--gold-lt)}
+.coin-label.yin{color:var(--mid)}
+.coin-placeholder{color:var(--dim);font-size:.83rem}
+
+/* 摇卦大按钮 - 呼吸光效 */
+.btn-shake{
+  background:linear-gradient(135deg,#2a1a00,#5a3a0a);
+  color:var(--gold-lt);
+  border:1px solid var(--gold-dk);
+  font-size:1.1rem;padding:20px;letter-spacing:.2em;border-radius:10px;
+  cursor:pointer;font-family:inherit;width:100%;margin-top:6px;
+  transition:all .15s;
+  box-shadow:0 0 12px rgba(201,168,76,.15);
+  animation:btnBreathe 2.5s ease-in-out infinite;
+}
+@keyframes btnBreathe{
+  0%,100%{box-shadow:0 0 12px rgba(201,168,76,.15),0 0 24px rgba(201,168,76,.05)}
+  50%{box-shadow:0 0 20px rgba(201,168,76,.3),0 0 40px rgba(201,168,76,.12),0 0 60px rgba(201,168,76,.04)}
+}
+.btn-shake:hover:not(:disabled){background:linear-gradient(135deg,#3e2600,#7a4e10);box-shadow:0 0 24px rgba(201,168,76,.35),0 0 48px rgba(201,168,76,.12);transform:scale(1.015)}
+.btn-shake:active:not(:disabled){transform:scale(.98)}
+.btn-shake:disabled{opacity:.35;cursor:not-allowed;transform:none;animation:none}
+
+/* 已摇出的爻列表 - 右侧滑入 + 金边闪烁 */
+.yaos-built{margin-top:18px;display:flex;flex-direction:column;gap:5px}
+.yao-built-item{
+  display:flex;align-items:center;gap:10px;
+  padding:6px 10px;
+  background:rgba(24,24,31,.8);
+  border-radius:6px;
+  opacity:0;
+  transform:translateX(20px);
+  border-left:3px solid transparent;
+  animation:slideInGold .45s ease-out forwards;
+}
+@keyframes slideInGold{
+  0%{opacity:0;transform:translateX(20px);border-left-color:transparent}
+  30%{opacity:1;transform:translateX(0);border-left-color:rgba(232,201,106,.8)}
+  100%{opacity:1;transform:translateX(0);border-left-color:rgba(201,168,76,.2)}
+}
+.yao-built-item.show{opacity:1;transform:translateX(0)}
+.ybi-pos{font-size:.68rem;color:var(--dim);width:24px;text-align:right;flex-shrink:0}
+.ybi-glyph{width:52px;height:10px;display:flex;gap:4px;flex-shrink:0}
+.ybi-yang{flex:1;height:100%;background:var(--yang);border-radius:2px}
+.ybi-gap{width:6px;flex-shrink:0}
+.ybi-yin{flex:1;height:100%;background:var(--yin);border-radius:2px}
+.ybi-label{font-size:.72rem;flex:1}
+.ybi-yang-t{color:var(--yang)}
+.ybi-yin-t{color:var(--yin)}
+.ybi-move{color:var(--move);font-size:.8rem;margin-left:2px}
+
+/* shake tip */
+.shake-tip{text-align:center;font-size:.83rem;color:var(--mid);margin:10px 0 14px;min-height:22px}
+
+/* === 结果区 === */
+/* 卦形 */
+.hex-row{display:flex;gap:20px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.hex-panel{flex:0 0 auto}
+.hex-badge{font-size:.66rem;color:var(--dim);letter-spacing:.12em;text-align:center;margin-bottom:4px}
+.hex-name{font-size:1.1rem;color:var(--gold-lt);letter-spacing:.2em;text-align:center;margin-bottom:14px}
+.hex-arrow{display:flex;align-items:center;padding-top:52px;color:var(--gold-dk);font-size:1.3rem}
+.yao-line{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.yl-pos{font-size:.63rem;color:var(--dim);width:18px;text-align:right;flex-shrink:0}
+.yl-glyph{width:70px;height:11px;display:flex;gap:4px;flex-shrink:0}
+.yl-yang{flex:1;height:100%;background:var(--yang);border-radius:2px}
+.yl-gap{width:7px;flex-shrink:0}
+.yl-yin{flex:1;height:100%;background:var(--yin);border-radius:2px}
+.yl-mv{font-size:.75rem;color:var(--move);width:11px;flex-shrink:0}
+.yl-meta{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.yl-lq{font-size:.67rem;color:var(--gold);min-width:18px}
+.yl-dz{font-size:.67rem;color:var(--dim)}
+.yl-ls{font-size:.67rem;color:#907ab8}
+.b-shi{background:rgba(201,168,76,.14);color:var(--gold-lt);font-size:.6rem;padding:1px 5px;border-radius:3px;border:1px solid rgba(201,168,76,.28)}
+.b-ying{background:rgba(106,142,196,.1);color:#8ab0e0;font-size:.6rem;padding:1px 5px;border-radius:3px;border:1px solid rgba(106,142,196,.22)}
+.b-kong{background:rgba(180,60,60,.1);color:#d08080;font-size:.6rem;padding:1px 5px;border-radius:3px}
+
+/* AI 解读区 - 金线边框 + 毛玻璃头部 */
+.ai-header{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:14px;
+  padding:12px 16px;
+  background:rgba(24,24,31,.6);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-radius:9px 9px 0 0;
+  border:1px solid rgba(201,168,76,.08);
+  border-bottom:none;
+}
+.ai-dot{width:7px;height:7px;background:var(--gold);border-radius:50%}
+.ai-dot.thinking{animation:pdot 1.3s ease infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+.ai-status{font-size:.7rem;color:var(--dim);letter-spacing:.1em}
+.ai-body{
+  background:rgba(24,24,31,.6);
+  border-radius:0 0 9px 9px;
+  border:1px solid rgba(201,168,76,.08);
+  border-top:none;
+  border-left:3px solid transparent;
+  border-image:linear-gradient(to bottom,rgba(201,168,76,.5),rgba(201,168,76,.1)) 1;
+  padding:22px;font-size:.95rem;line-height:2;color:var(--text);min-height:60px;white-space:pre-wrap;word-break:break-all;
+}
+.ai-body.stream::after{content:'▋';color:var(--gold);animation:blink .75s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* 吉凶 badge 升级 */
+.jx-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:1.4rem;font-weight:900;letter-spacing:.3em;
+  padding:12px 32px;border-radius:8px;margin:18px 0 22px;
+  border:2px solid;font-family:'Noto Serif SC','STSong',serif;
+  position:relative;overflow:visible;
+}
+/* 大吉 - 金光爆发 */
+.jx-daji{
+  background:rgba(80,180,80,.12);color:#6ddc7a;border-color:#4ab85a;
+  text-shadow:0 0 20px rgba(80,200,80,.5),0 0 40px rgba(80,200,80,.2);
+  box-shadow:0 0 25px rgba(80,200,80,.15),0 0 50px rgba(80,200,80,.06),inset 0 0 20px rgba(80,200,80,.08);
+  animation:jxGlowDaji 2s ease-in-out infinite;
+}
+@keyframes jxGlowDaji{
+  0%,100%{box-shadow:0 0 25px rgba(80,200,80,.15),0 0 50px rgba(80,200,80,.06),inset 0 0 20px rgba(80,200,80,.08)}
+  50%{box-shadow:0 0 35px rgba(80,200,80,.25),0 0 70px rgba(80,200,80,.1),inset 0 0 25px rgba(80,200,80,.12)}
+}
+/* 小吉 */
+.jx-xiji{
+  background:rgba(180,210,80,.1);color:#c8d85a;border-color:#a0b840;
+  text-shadow:0 0 16px rgba(180,220,60,.4);
+  box-shadow:0 0 16px rgba(180,220,60,.08),inset 0 0 12px rgba(180,220,60,.04);
+}
+/* 平 */
+.jx-ping{
+  background:rgba(160,150,100,.1);color:#c8b87a;border-color:#a09050;
+  box-shadow:inset 0 0 10px rgba(160,150,100,.05);
+}
+/* 小凶 */
+.jx-xixiong{
+  background:rgba(210,130,60,.1);color:#e0943a;border-color:#c07020;
+  text-shadow:0 0 16px rgba(210,130,60,.4);
+  box-shadow:0 0 16px rgba(210,130,60,.08),inset 0 0 12px rgba(210,130,60,.04);
+}
+/* 大凶 */
+.jx-daxiong{
+  background:rgba(200,60,60,.12);color:#e06060;border-color:#c04040;
+  text-shadow:0 0 20px rgba(200,60,60,.5),0 0 40px rgba(200,60,60,.2);
+  box-shadow:0 0 25px rgba(200,60,60,.15),0 0 50px rgba(200,60,60,.06),inset 0 0 20px rgba(200,60,60,.08);
+  animation:jxGlowDaxiong 2s ease-in-out infinite;
+}
+@keyframes jxGlowDaxiong{
+  0%,100%{box-shadow:0 0 25px rgba(200,60,60,.15),0 0 50px rgba(200,60,60,.06),inset 0 0 20px rgba(200,60,60,.08)}
+  50%{box-shadow:0 0 35px rgba(200,60,60,.25),0 0 70px rgba(200,60,60,.1),inset 0 0 25px rgba(200,60,60,.12)}
+}
+.jx-text{line-height:2;white-space:pre-wrap;word-break:break-all;font-size:.95rem}
+
+/* 吉凶粒子爆炸容器 */
+.jx-particles{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.jx-particle{
+  position:absolute;border-radius:50%;
+  animation:jxBurst .8s ease-out forwards;
+  pointer-events:none;
+}
+@keyframes jxBurst{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)}
+}
+
+/* divider */
+hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* util */
+.hidden{display:none!important}
+.fade-in{animation:fin .5s ease}
+@keyframes fin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- 金色星尘粒子 Canvas -->
+<canvas id="stardust"></canvas>
+
+<div class="wrap">
+
+<!-- 顶部 -->
+<div class="hd">
+  <span class="hd-icon">☯</span>
+  <h1>六 爻 卜 卦</h1>
+  <p>纳甲筮法 · 金钱起卦 · AI 解读</p>
+</div>
+
+<!-- ① 写问题 -->
+<div class="card" id="s1">
+  <div class="clabel">一、明确所问之事</div>
+  <textarea id="qinput" placeholder="请写下想卜问的事，越具体越灵验。&#10;&#10;例如：「跳槽去新公司是否合适？」&#10;「这段感情是否值得继续？」&#10;「近期投资能否顺利？」"></textarea>
+  <div class="pills">
+    <button class="pill" onclick="fillQ('这段感情是否值得继续？')">感情</button>
+    <button class="pill" onclick="fillQ('近期事业工作运势如何？')">事业</button>
+    <button class="pill" onclick="fillQ('近期财运如何，是否适合投资？')">财运</button>
+    <button class="pill" onclick="fillQ('身体健康状况近期如何？')">健康</button>
+    <button class="pill" onclick="fillQ('此次考试能否顺利通过？')">考试</button>
+  </div>
+  <div class="hint">⚠ 一事一卦，心无杂念。卜卦结果仅供参考，请理性对待。</div>
+  <button class="btn btn-gold" onclick="toShake()">静心 · 准备起卦 →</button>
+</div>
+
+<!-- ② 逐爻掷卦 -->
+<div class="card hidden" id="s2">
+  <div class="clabel">二、金钱起卦 · 逐爻掷出</div>
+  <div class="q-echo" id="qecho"></div>
+
+  <!-- 六爻进度 -->
+  <div class="dots" id="dotrow"></div>
+
+  <!-- 铜钱 -->
+  <div class="coins-wrap" id="coinswrap">
+    <span class="coin-placeholder">准备掷第一爻……</span>
+  </div>
+
+  <div class="shake-tip" id="shaketip">专注您的问题，点击下方按钮掷出铜钱</div>
+
+  <button class="btn-shake" id="btnshake" onclick="throwNext()">🪙 &nbsp;掷 &nbsp;卦</button>
+
+  <!-- 已建成的爻（从初到上，视觉倒序）-->
+  <div class="yaos-built" id="yaosbuilt"></div>
+</div>
+
+<!-- ③ 解卦 -->
+<div class="card hidden fade-in" id="s3">
+  <div class="clabel">三、卦象已成</div>
+  <div class="q-echo" id="qecho2"></div>
+
+  <div class="hex-row" id="hexrow"></div>
+
+  <hr>
+
+  <div class="clabel">四、AI 结合问题解读</div>
+  <div class="ai-header">
+    <div class="ai-dot thinking" id="aidot"></div>
+    <span class="ai-status" id="aistatus">AI 正在解读卦象……</span>
+  </div>
+  <div class="ai-body stream" id="aibody"></div>
+
+  <button class="btn btn-ghost" onclick="reset()" style="margin-top:22px">↺ 重新卜卦</button>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ============================================================
+// 易学数据
+// ============================================================
+const TRI = {
+  1:{n:'乾',wx:'金',dz:['子','寅','辰','午','申','戌']},
+  2:{n:'兑',wx:'金',dz:['巳','卯','丑','亥','酉','未']},
+  3:{n:'离',wx:'火',dz:['卯','丑','亥','酉','未','巳']},
+  4:{n:'震',wx:'木',dz:['子','寅','辰','午','申','戌']},
+  5:{n:'巽',wx:'木',dz:['丑','亥','酉','未','巳','卯']},
+  6:{n:'坎',wx:'水',dz:['寅','辰','午','申','戌','子']},
+  7:{n:'艮',wx:'土',dz:['辰','午','申','戌','子','寅']},
+  8:{n:'坤',wx:'土',dz:['未','巳','卯','丑','亥','酉']},
+};
+const G64 = {'11':'乾为天','12':'泽天夬','13':'火天大有','14':'雷天大壮','15':'风天小畜','16':'水天需','17':'山天大畜','18':'地天泰','21':'天泽履','22':'兑为泽','23':'火泽睽','24':'雷泽归妹','25':'风泽中孚','26':'水泽节','27':'山泽损','28':'地泽临','31':'天火同人','32':'泽火革','33':'离为火','34':'雷火丰','35':'风火家人','36':'水火既济','37':'山火贲','38':'地火明夷','41':'天雷无妄','42':'泽雷随','43':'火雷噬嗑','44':'震为雷','45':'风雷益','46':'水雷屯','47':'山雷颐','48':'地雷复','51':'天风姤','52':'泽风大过','53':'火风鼎','54':'雷风恒','55':'巽为风','56':'水风井','57':'山风蛊','58':'地风升','61':'天水讼','62':'泽水困','63':'火水未济','64':'雷水解','65':'风水涣','66':'坎为水','67':'山水蒙','68':'地水师','71':'天山遁','72':'泽山咸','73':'火山旅','74':'雷山小过','75':'风山渐','76':'水山蹇','77':'艮为山','78':'地山谦','81':'天地否','82':'泽地萃','83':'火地晋','84':'雷地豫','85':'风地观','86':'水地比','87':'山地剥','88':'坤为地'};
+const DZWX = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'};
+const LSSTART = {'甲':0,'乙':0,'丙':1,'丁':1,'戊':2,'己':3,'庚':4,'辛':4,'壬':5,'癸':5};
+const LS = ['青龙','朱雀','勾陈','腾蛇','白虎','玄武'];
+const POSN = ['初爻','二爻','三爻','四爻','五爻','上爻'];
+const POSN_S = ['初','二','三','四','五','上'];
+const GWXMAP = {'乾':'金','兑':'金','离':'火','震':'木','巽':'木','坎':'水','艮':'土','坤':'土'};
+const WANG = {'木':{春:'旺',夏:'相',秋:'囚',冬:'休'},'火':{春:'相',夏:'旺',秋:'死',冬:'囚'},'土':{春:'休',夏:'旺',秋:'相',冬:'休'},'金':{春:'死',夏:'囚',秋:'旺',冬:'相'},'水':{春:'休',夏:'死',秋:'相',冬:'旺'}};
+
+function sheng(a,b){return(a=='木'&&b=='火')||(a=='火'&&b=='土')||(a=='土'&&b=='金')||(a=='金'&&b=='水')||(a=='水'&&b=='木')}
+function ke(a,b){return(a=='木'&&b=='土')||(a=='土'&&b=='水')||(a=='水'&&b=='火')||(a=='火'&&b=='金')||(a=='金'&&b=='木')}
+function lq(gwx,ywx){if(gwx==ywx)return'兄弟';if(sheng(gwx,ywx))return'子孙';if(sheng(ywx,gwx))return'父母';if(ke(gwx,ywx))return'妻财';if(ke(ywx,gwx))return'官鬼';return'?'}
+
+function season(m){if(m>=3&&m<=5)return'春';if(m>=6&&m<=8)return'夏';if(m>=9&&m<=11)return'秋';return'冬'}
+function tianGan(d){return['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'][Math.floor(d.getTime()/86400000)%10]}
+function kongWang(d){const ji=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];const n=Math.floor(d.getTime()/86400000);const x=(Math.floor(n/10)*10)%12;return[ji[(x+10)%12],ji[(x+11)%12]]}
+
+// 爻 → 三才索引 (1-8)
+function yao3toIdx(y0,y1,y2){const b=(y2.yin?0:1)*4+(y1.yin?0:1)*2+(y0.yin?0:1);return[8,7,6,5,4,3,2,1][b]}
+
+// 世应（简化定位）
+function shiying(shang,xia){
+  if(shang===xia)return{shi:5,ying:2};
+  const cfg=[{shi:0,ying:3},{shi:1,ying:4},{shi:2,ying:5},{shi:3,ying:0},{shi:4,ying:1},{shi:5,ying:2}];
+  return cfg[(shang*xia+shang)%6];
+}
+
+// 铜钱：true=字面(阳=3), false=国徽(阴=2)
+function throwCoins(){return[Math.random()<.5,Math.random()<.5,Math.random()<.5]}
+function coinsToYao(c){
+  const s=c.reduce((a,v)=>a+(v?3:2),0);
+  if(s===9)return{yin:false,moving:true,label:'老阳 ○'};
+  if(s===7)return{yin:false,moving:false,label:'少阳'};
+  if(s===8)return{yin:true,moving:false,label:'少阴'};
+  return{yin:true,moving:true,label:'老阴 ×'};
+}
+
+// 构建完整卦数据
+function buildHex(yaos, now){
+  const shang=yao3toIdx(yaos[3],yaos[4],yaos[5]);
+  const xia=yao3toIdx(yaos[0],yaos[1],yaos[2]);
+  const st=TRI[shang],xt=TRI[xia];
+  const gwx=GWXMAP[st.n]||'土';
+  const dz=[...xt.dz.slice(0,3),...st.dz.slice(3,6)];
+  const sy=shiying(shang,xia);
+  const kw=kongWang(now);
+  const tg=tianGan(now);
+  const lss=LSSTART[tg]||0;
+  const sea=season(now.getMonth()+1);
+  const details=yaos.map((y,i)=>{
+    const d=dz[i],yw=DZWX[d]||'土';
+    return{...y,i,dz:d,yw,lq:lq(gwx,yw),ls:LS[(lss+i)%6],kong:kw.includes(d),shi:sy.shi===i,ying:sy.ying===i,wang:WANG[yw]?.[sea]||'平'};
+  });
+  const biaos=yaos.map(y=>y.moving?{...y,yin:!y.yin,moving:false}:y);
+  const bs=yao3toIdx(biaos[3],biaos[4],biaos[5]);
+  const bx=yao3toIdx(biaos[0],biaos[1],biaos[2]);
+  return{yaos,details,shang,xia,gwx,sea,kw,
+    guaN:G64[`${shang}${xia}`]||'未知卦',
+    biaN:G64[`${bs}${bx}`]||'',
+    shangN:st.n,xiaN:xt.n,
+    biaos,
+    moving:details.filter(d=>d.moving),
+    shi:details.find(d=>d.shi),
+    ying:details.find(d=>d.ying),
+  };
+}
+
+// ============================================================
+// 状态
+// ============================================================
+let Q='', yaosArr=[], lastCoins=null, hex=null;
+
+// ============================================================
+// Step 1 → 2
+// ============================================================
+function fillQ(q){document.getElementById('qinput').value=q;document.getElementById('qinput').focus()}
+
+function toShake(){
+  const q=document.getElementById('qinput').value.trim();
+  if(!q){
+    const el=document.getElementById('qinput');
+    el.style.borderColor='var(--bad)';el.focus();
+    setTimeout(()=>el.style.borderColor='',1500);return;
+  }
+  Q=q;yaosArr=[];lastCoins=null;hex=null;
+  // 彻底清空上次残留
+  document.getElementById('yaosbuilt').innerHTML='';
+  document.getElementById('coinswrap').innerHTML='<span class="coin-placeholder">准备掷第一爻……</span>';
+  document.getElementById('shaketip').textContent='';
+  const btn=document.getElementById('btnshake');
+  btn.disabled=false;
+  btn.textContent='🪙 \u00a0掷 \u00a0卦';
+  show('s2');hide('s1');hide('s3');
+  document.getElementById('qecho').textContent='所问：'+Q;
+  initDots();
+  updateTip();
+}
+
+function initDots(){
+  const el=document.getElementById('dotrow');el.innerHTML='';
+  for(let i=0;i<6;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' active':'');
+    d.id='dot'+i;
+    // 添加脉冲亮点 + 扩散环 (active 状态)
+    if(i===0){
+      d.innerHTML=`<span class="dot-core"></span><span class="dot-ring"></span><span>${POSN_S[i]}</span><span class="dot-yao">爻</span>`;
+    }else{
+      d.innerHTML=`<span>${POSN_S[i]}</span><span class="dot-yao">爻</span>`;
+    }
+    el.appendChild(d);
+  }
+}
+
+function updateTip(){
+  const n=yaosArr.length;
+  if(n<6){
+    document.getElementById('shaketip').textContent=`第 ${n+1} 次 · ${POSN[n]} — 心诚意正，点击掷卦`;
+    document.getElementById('btnshake').disabled=false;
+  }
+}
+
+// ============================================================
+// 掷一爻
+// ============================================================
+function throwNext(){
+  if(yaosArr.length>=6)return;
+  document.getElementById('btnshake').disabled=true;
+
+  const coins=throwCoins();
+  lastCoins=coins;
+  const yao=coinsToYao(coins);
+  yaosArr.push(yao);
+
+  renderCoins(coins);
+
+  setTimeout(()=>{
+    const idx=yaosArr.length-1;
+    // 更新进度点
+    document.getElementById('dot'+idx)?.classList.replace('active','done');
+    if(idx<5)document.getElementById('dot'+(idx+1))?.classList.add('active');
+    // 追加爻显示
+    appendYaoBuild(idx,yao);
+
+    if(yaosArr.length<6){
+      updateTip();
+    }else{
+      document.getElementById('shaketip').textContent='六爻已满，卦象已成！';
+      document.getElementById('btnshake').textContent='✓ 卦成，解读中……';
+      setTimeout(toResult,900);
+    }
+  },550);
+}
+
+function renderCoins(coins){
+  const w=document.getElementById('coinswrap');w.innerHTML='';
+  coins.forEach((isYang,i)=>{
+    // 外层包含铜钱+文字标签
+    const outer=document.createElement('div');
+    outer.className='coin-outer';
+    // 铜钱本体（无文字）
+    const c=document.createElement('div');
+    c.className=`coin ${isYang?'coin-yang':'coin-yin'} coin-spin`;
+    c.style.animationDelay=`${i*.09}s`;
+    // 文字在铜钱下方
+    const lbl=document.createElement('span');
+    lbl.className=`coin-label ${isYang?'yang':'yin'}`;
+    lbl.textContent=isYang?'阳':'阴';
+    outer.appendChild(c);
+    outer.appendChild(lbl);
+    w.appendChild(outer);
+  });
+}
+
+function appendYaoBuild(idx,yao){
+  const c=document.getElementById('yaosbuilt');
+  const div=document.createElement('div');
+  div.className='yao-built-item';
+  div.id='ybi'+idx;
+
+  let glyph='';
+  if(yao.yin) glyph=`<div class="ybi-gap"></div><div class="ybi-yin"></div><div class="ybi-gap"></div><div class="ybi-gap" style="width:6px"></div><div class="ybi-yin"></div><div class="ybi-gap"></div>`;
+  else        glyph=`<div class="ybi-yang"></div>`;
+
+  const lclass=yao.moving?'ybi-move':(yao.yin?'ybi-yin-t':'ybi-yang-t');
+
+  div.innerHTML=`
+    <span class="ybi-pos">${POSN[idx]}</span>
+    <div class="ybi-glyph">${glyph}</div>
+    <span class="ybi-label ${lclass}">${yao.label}${yao.moving?'&nbsp;●':''}</span>`;
+  c.appendChild(div);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>div.classList.add('show')));
+}
+
+// ============================================================
+// Step 2 → 3
+// ============================================================
+function toResult(){
+  hex=buildHex(yaosArr,new Date());
+  hide('s2');
+  const s3=document.getElementById('s3');
+  s3.classList.remove('hidden');
+  s3.classList.add('fade-in');
+  document.getElementById('qecho2').textContent='所问：'+Q;
+  renderHex();
+  startAI();
+}
+
+// ============================================================
+// 渲染卦形
+// ============================================================
+function renderHex(){
+  const el=document.getElementById('hexrow');el.innerHTML='';
+  el.appendChild(makeHexPanel(hex.yaos,hex.details,hex.guaN,'本 卦',true));
+  if(hex.moving.length>0){
+    const arrow=document.createElement('div');
+    arrow.className='hex-arrow';arrow.textContent='→';
+    el.appendChild(arrow);
+    const bDet=hex.biaos.map((y,i)=>({...hex.details[i],...y}));
+    el.appendChild(makeHexPanel(hex.biaos,bDet,hex.biaN,'变 卦',false));
+  }
+}
+
+function makeHexPanel(yarr,darr,name,badge,meta){
+  const p=document.createElement('div');p.className='hex-panel';
+  p.innerHTML=`<div class="hex-badge">${badge}</div><div class="hex-name">${name}</div>`;
+  for(let i=5;i>=0;i--){
+    const y=yarr[i],d=darr[i];
+    const row=document.createElement('div');row.className='yao-line';
+    // 位
+    const pos=document.createElement('div');pos.className='yl-pos';pos.textContent=POSN_S[i];row.appendChild(pos);
+    // 爻形
+    const g=document.createElement('div');g.className='yl-glyph';
+    if(y.yin) g.innerHTML=`<div class="yl-yin"></div><div class="yl-gap"></div><div class="yl-yin"></div>`;
+    else      g.innerHTML=`<div class="yl-yang"></div>`;
+    row.appendChild(g);
+    // 动标
+    const mv=document.createElement('div');mv.className='yl-mv';mv.textContent=y.moving?'●':'';row.appendChild(mv);
+    // meta
+    if(meta&&d){
+      const m=document.createElement('div');m.className='yl-meta';
+      m.innerHTML=`<span class="yl-lq">${d.lq}</span><span class="yl-dz">${d.dz}${d.yw}</span><span class="yl-ls">${d.ls}</span>${d.shi?'<span class="b-shi">世</span>':''}${d.ying?'<span class="b-ying">应</span>':''}${d.kong?'<span class="b-kong">空</span>':''}`;
+      row.appendChild(m);
+    }
+    p.appendChild(row);
+  }
+  return p;
+}
+
+// ============================================================
+// AI 解读
+// ============================================================
+async function startAI(){
+  const body=document.getElementById('aibody');
+  const dot=document.getElementById('aidot');
+  const stat=document.getElementById('aistatus');
+  body.textContent='';body.classList.add('stream');
+
+  const d=hex;
+  const movDesc=d.moving.length>0
+    ? d.moving.map(y=>`${POSN[y.i]}（${y.lq}·${y.dz}${y.yw}）动`).join('、')
+    : '无动爻，六爻皆静';
+
+  const detailStr=d.details.map(dd=>
+    `  ${POSN[dd.i]}：${dd.lq} ${dd.dz}(${dd.yw}) ${dd.wang}${dd.shi?' [世]':''}${dd.ying?' [应]':''}${dd.kong?' [空亡]':''}${dd.moving?' ◆动':''}`)
+    .join('\n');
+
+  const prompt=`你是一位精通《增删卜易》《卜筮正宗》《周易》的易学大师，解卦引经据典，深入透彻，言辞有力。请根据以下完整卦象数据，结合问卦者之问，给出专业、深度、有温度的卦象解读。
+
+【问卦者之问】：${Q}
+
+【卦象数据】
+本卦：${d.guaN}（上卦${d.shangN} / 下卦${d.xiaN}）
+变卦：${d.moving.length>0?d.biaN:'无变卦（六爻皆静）'}
+宫位五行：${d.gwx}　节令：${d.sea}季　旬空：${d.kw.join('、')}
+世爻：${d.shi?POSN[d.shi.i]+'（'+d.shi.lq+'·'+d.shi.dz+d.shi.yw+'·旺衰:'+d.shi.wang+')':'未定'}
+应爻：${d.ying?POSN[d.ying.i]+'（'+d.ying.lq+'·'+d.ying.dz+d.ying.yw+')':'未定'}
+动爻：${movDesc}
+各爻详情（初爻→上爻）：
+${detailStr}
+
+【解读要求】
+
+请按以下四个部分来写，每部分之间空一行，不要加序号或标题：
+
+第一部分：这是什么卦
+用大白话解释这个卦的大意——就像跟朋友聊天一样，说说这个卦象征什么处境、什么状态。可以引用《周易》卦辞或古籍原句（用「」标出），但引完要立刻用现代话解释清楚是什么意思，不要让人看完一脸懵。
+
+第二部分：你问的这件事，卦里怎么说
+直接说跟问题最相关的那个爻（用神）现在状态好不好——是强是弱、有没有人帮、有没有被克、有没有落空。用"比喻+直白结论"的方式说，比如"就像一个人想出门，但门被锁住了"这样的表达。世爻代表你自己，应爻代表对方或外部情况，把这个关系也说清楚。
+
+第三部分：事情怎么发展
+如果有变动的爻（动爻），就解释它在这件事里扮演什么角色，是推一把还是拦一下，最终会把事情推向哪个方向。如果没有动爻，就说局势目前静止意味着什么。这部分要联系问卦者的具体问题来说，不要泛泛而谈。
+
+第四部分：最终结论
+必须在这部分开头用以下格式单独一行写出吉凶判断：
+【大吉】或【小吉】或【平】或【小凶】或【大凶】
+
+然后用2-3句话解释为什么是这个判断，给出1-2个具体可行的建议（比如"近期不要急着表态，等对方主动"，"这个月先不要动手，下个月再看"），并说一下大概什么时候会有转机或结果。
+
+【总语气要求】
+- 全程大白话，像一个懂行的朋友在帮你分析，不是在背书
+- 适当引用一两句古文增加可信度，但每句都要解释
+- 绝对不要用"旺衰""生扶""化合""进神退神"等专业术语直接堆砌，必须转化成普通人听得懂的话
+- 字数800-1000字，不要太短也不要废话连篇`;
+
+  try{
+    const resp=await fetch('https://redservingapi.devops.xiaohongshu.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','api-key':'QST7195758dfe9e889d81be2f7174de73b7'},
+      body:JSON.stringify({
+        model:'deepseek-v3-0324',
+        messages:[{role:'user',content:prompt}],
+        stream:true,max_tokens:3000,temperature:.85
+      })
+    });
+    if(!resp.ok)throw new Error('http '+resp.status);
+    const reader=resp.body.getReader(),dec=new TextDecoder();
+    let buf='';
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n');buf=lines.pop()||'';
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue;
+        const j=line.slice(6).trim();
+        if(j==='[DONE]')continue;
+        try{const o=JSON.parse(j);const ch=o.choices?.[0]?.delta?.content||'';if(ch){body.textContent+=ch;}}catch(_){}
+      }
+    }
+  }catch(err){
+    body.textContent=`这是「${hex.guaN}」卦${hex.moving.length>0?`，变为「${hex.biaN}」卦`:'，六爻皆静，局势稳定'}。\n\n${d.shi?`代表你自身的爻处于${['旺','相'].includes(d.shi?.wang)?'较强的状态':'偏弱的状态'}，`:''}${['旺','相'].includes(d.shi?.wang)?'主动出击有利。':'这时候稳住、等待时机更好。'}\n\n${d.moving.length>0?'卦中有变动，说明事情还在变化，方向尚未确定，耐心观察。':'卦象平静，变化不大，适合守待，不要强行推进。'}\n\n【平】\n\n近期顺其自然，不必强求结果。等待合适时机，再做决定。`;
+  }
+
+  body.classList.remove('stream');
+  // 解析吉凶标签并渲染醒目 badge
+  renderJiXiong(body);
+  dot.classList.remove('thinking');dot.style.background='var(--good)';
+  stat.textContent='解读完成';
+}
+
+function renderJiXiong(body){
+  const text=body.textContent;
+  const map={
+    '大吉':{cls:'jx-daji',icon:'✦',label:'大 吉'},
+    '小吉':{cls:'jx-xiji',icon:'◆',label:'小 吉'},
+    '平'  :{cls:'jx-ping',icon:'◈',label:'平'},
+    '小凶':{cls:'jx-xixiong',icon:'◇',label:'小 凶'},
+    '大凶':{cls:'jx-daxiong',icon:'✸',label:'大 凶'},
+  };
+  // 找 【大吉】 等标签
+  const m=text.match(/【(大吉|小吉|平|小凶|大凶)】/);
+  if(!m)return;
+  const key=m[1]; const cfg=map[key]||map['平'];
+  // 把 【X】 这一行替换成 HTML badge
+  const html=body.textContent
+    .replace(/【(大吉|小吉|平|小凶|大凶)】/g,
+      `\n`)  // 先暂时移除，后面插 badge
+    .trim();
+  // 构建最终 HTML
+  body.innerHTML=
+    `<div class="jx-badge ${cfg.cls}"><div class="jx-particles" id="jxp"></div>${cfg.icon} ${cfg.label}</div>`+
+    `<div class="jx-text">${html.replace(/\n/g,'<br>')}</div>`;
+
+  // 大吉/大凶 粒子爆炸效果
+  if(key==='大吉'||key==='大凶'){
+    setTimeout(()=>burstJxParticles(),100);
+  }
+}
+
+// ============================================================
+// 重置 & 工具
+// ============================================================
+function reset(){
+  Q='';yaosArr=[];lastCoins=null;hex=null;
+  document.getElementById('qinput').value='';
+  document.getElementById('yaosbuilt').innerHTML='';
+  document.getElementById('coinswrap').innerHTML='<span class="coin-placeholder">准备掷第一爻……</span>';
+  document.getElementById('hexrow').innerHTML='';
+  document.getElementById('aibody').innerHTML='';
+  document.getElementById('aibody').classList.add('stream');
+  document.getElementById('aistatus').textContent='AI 正在解读卦象……';
+  document.getElementById('aidot').classList.add('thinking');
+  document.getElementById('aidot').style.background='var(--gold)';
+  const btn=document.getElementById('btnshake');
+  btn.textContent='🪙 \u00a0掷 \u00a0卦';
+  btn.disabled=false;
+  hide('s2');hide('s3');show('s1');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function show(id){document.getElementById(id).classList.remove('hidden')}
+function hide(id){document.getElementById(id).classList.add('hidden')}
+
+// ============================================================
+// ✦ 动效初始化 - 金色星尘粒子系统
+// ============================================================
+(function initStardust(){
+  const canvas=document.getElementById('stardust');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  let W,H;
+
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+  resize();
+  window.addEventListener('resize',resize);
+
+  // 120个粒子
+  const particles=[];
+  for(let i=0;i<120;i++){
+    particles.push({
+      x:Math.random()*W,
+      y:Math.random()*H,
+      r:Math.random()*2+0.5,           // 1-3px
+      baseOpacity:Math.random()*0.3+0.1, // 0.1-0.4
+      opacity:0,
+      vx:(Math.random()-0.5)*0.15,      // 缓慢漂浮
+      vy:(Math.random()-0.5)*0.12 - 0.05, // 微微上浮
+      // 颜色：金色/白色
+      color:Math.random()>0.3
+        ? `rgba(201,168,76,`             // 金色
+        : `rgba(255,248,230,`,           // 白色暖调
+      phase:Math.random()*Math.PI*2,     // 呼吸相位
+      speed:Math.random()*0.008+0.004,
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of particles){
+      // 呼吸式 opacity
+      p.opacity=p.baseOpacity*(0.6+0.4*Math.sin(Date.now()*p.speed+p.phase));
+      p.x+=p.vx;
+      p.y+=p.vy;
+      // 边界循环
+      if(p.x<-10)p.x=W+10;
+      if(p.x>W+10)p.x=-10;
+      if(p.y<-10)p.y=H+10;
+      if(p.y>H+10)p.y=-10;
+
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.color+p.opacity+')';
+      ctx.fill();
+
+      // 大粒子加微弱光晕
+      if(p.r>1.5){
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);
+        ctx.fillStyle=p.color+(p.opacity*0.15)+')';
+        ctx.fill();
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ✦ 吉凶粒子爆炸
+function burstJxParticles(){
+  const container=document.getElementById('jxp');
+  if(!container)return;
+  const rect=container.parentElement.getBoundingClientRect();
+  const cx=rect.width/2, cy=rect.height/2;
+  const isDaji=container.parentElement.classList.contains('jx-daji');
+  const colors=isDaji
+    ? ['#6ddc7a','#4ab85a','#80ff80','#fff','#c9a84c']
+    : ['#e06060','#c04040','#ff8080','#fff','#c9a84c'];
+
+  for(let i=0;i<14;i++){
+    const el=document.createElement('div');
+    el.className='jx-particle';
+    const angle=Math.random()*Math.PI*2;
+    const dist=40+Math.random()*80;
+    const px=Math.cos(angle)*dist;
+    const py=Math.sin(angle)*dist;
+    const size=2+Math.random()*4;
+    el.style.cssText=`
+      left:${cx}px;top:${cy}px;
+      width:${size}px;height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      --px:${px}px;--py:${py}px;
+      animation-delay:${Math.random()*0.15}s;
+      animation-duration:${0.5+Math.random()*0.5}s;
+    `;
+    container.appendChild(el);
+    setTimeout(()=>el.remove(),1200);
+  }
+}
+
+// ✦ 铜钱爆发效果：在 renderCoins 后，给铜钱加 burst class
+const _origRenderCoins=renderCoins;
+renderCoins=function(coins){
+  _origRenderCoins(coins);
+  // 给每个铜钱加 burst
+  setTimeout(()=>{
+    document.querySelectorAll('.coin-spin').forEach((c,i)=>{
+      setTimeout(()=>{
+        c.classList.add('coin-burst');
+        setTimeout(()=>c.classList.remove('coin-burst'),700);
+      },i*90+400);
+    });
+  },10);
+};
+
+// ✦ 进度点升级：当 active 切换时，注入 dot-core 和 dot-ring
+// 已在 initDots 中处理，每次调用 initDots 时会自动为第0个爻添加 dot-core 和 dot-ring
+// 需要增强：当 active 类被添加到非首爻时，动态插入 dot-core 和 dot-ring
+const _origInitDots = initDots;
+// initDots 已在上方重写，此处仅补充 dot-core/dot-ring 动态注入
+// 用 MutationObserver 监听 active 类变化
+const dotObserver = new MutationObserver((mutations) => {
+  mutations.forEach((mut) => {
+    if(mut.attributeName === 'class' && mut.target.classList.contains('dot') && mut.target.classList.contains('active')){
+      if(!mut.target.querySelector('.dot-core')){
+        const core = document.createElement('span');
+        core.className = 'dot-core';
+        const ring = document.createElement('span');
+        ring.className = 'dot-ring';
+        mut.target.prepend(ring, core);
+      }
+    }
+  });
+});
+// 观察 dotrow 的子节点 class 变化
+setTimeout(() => {
+  const dr = document.getElementById('dotrow');
+  if(dr) {
+    dr.querySelectorAll('.dot').forEach(d => dotObserver.observe(d, {attributes: true}));
+  }
+  // 也对未来新增的 dot 进行观察
+  const nodeObs = new MutationObserver(() => {
+    dr.querySelectorAll('.dot').forEach(d => {
+      try { dotObserver.observe(d, {attributes: true}); } catch(e) {}
+    });
+  });
+  nodeObs.observe(dr, {childList: true});
+}, 100);
+</script>
+</body>
+</html>
