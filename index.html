@@ -334,6 +334,8 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
    📱 移动端响应式适配
    ============================================================ */
 @media (max-width: 480px) {
+  /* 手机端关闭 backdrop-filter，避免 GPU 过载导致渲染卡顿 */
+  .card, .ai-header { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   /* 整体容器 */
   .wrap { padding: 0 14px; }
 
@@ -744,6 +746,9 @@ async function startAI(){
   const dot=document.getElementById('aidot');
   const stat=document.getElementById('aistatus');
   body.textContent='';body.classList.add('stream');
+  // 暂停粒子动画，释放 GPU 给 AI 流式渲染
+  if(window.stardustPause)window.stardustPause();
+  stat.textContent='正在连接 AI…';
 
   const d=hex;
   const movDesc=d.moving.length>0
@@ -793,38 +798,92 @@ ${detailStr}
 - 绝对不要用"旺衰""生扶""化合""进神退神"等专业术语直接堆砌，必须转化成普通人听得懂的话
 - 字数800-1000字，不要太短也不要废话连篇`;
 
-  try{
-    const resp=await fetch('https://redservingapi.devops.xiaohongshu.com/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','api-key':'QST7195758dfe9e889d81be2f7174de73b7'},
-      body:JSON.stringify({
-        model:'deepseek-v3-0324',
-        messages:[{role:'user',content:prompt}],
-        stream:true,max_tokens:3000,temperature:.85
-      })
-    });
-    if(!resp.ok)throw new Error('http '+resp.status);
-    const reader=resp.body.getReader(),dec=new TextDecoder();
-    let buf='';
+    // 双接口：内网优先，公网兜底
+  const APIS = [
+    {
+      url: 'https://redservingapi.devops.xiaohongshu.com/v1/chat/completions',
+      headers: {'Content-Type':'application/json','api-key':'QST7195758dfe9e889d81be2f7174de73b7'},
+      body: {model:'deepseek-v3-0324', messages:[{role:'user',content:prompt}], stream:true, max_tokens:3000, temperature:.85},
+      timeout: 6000
+    },
+    {
+      url: 'https://api.minimax.chat/v1/chat/completions',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer sk-cp-UmQpKW3K2Tz2IchUZ1qaC7QUQi2Fsfl4OiG7daWmgG-YIFw3yzaPCitLZKmnONuaCGedRuAm3nPZn-XD4BVVmx27xi0La8yZ8pfOOcHTMv5dP7QKYNxAnP8'},
+      body: {model:'MiniMax-M2.5-highspeed', messages:[{role:'system',content:'你是精通纳甲筮法的易学大师，直接输出解读内容，不要任何思考过程标签。'},{role:'user',content:prompt}], stream:true, max_tokens:3000, temperature:.85},
+      timeout: 30000
+    }
+  ];
+
+  // 通用流式读取函数（过滤 <think>...</think>）
+  async function streamRead(resp){
+    const reader=resp.body.getReader(), dec=new TextDecoder();
+    let rawBuf='', pending='', inThink=false;
+    let scheduled=false;
+    function scheduleFlush(){
+      if(scheduled)return; scheduled=true;
+      requestAnimationFrame(()=>{
+        if(pending){body.textContent+=pending;pending='';}
+        scheduled=false;
+      });
+    }
     while(true){
       const{done,value}=await reader.read();
       if(done)break;
-      buf+=dec.decode(value,{stream:true});
-      const lines=buf.split('\n');buf=lines.pop()||'';
+      rawBuf+=dec.decode(value,{stream:true});
+      const lines=rawBuf.split('\n'); rawBuf=lines.pop()||'';
       for(const line of lines){
         if(!line.startsWith('data: '))continue;
         const j=line.slice(6).trim();
         if(j==='[DONE]')continue;
-        try{const o=JSON.parse(j);const ch=o.choices?.[0]?.delta?.content||'';if(ch){body.textContent+=ch;}}catch(_){}
+        try{
+          const o=JSON.parse(j);
+          let ch=o.choices?.[0]?.delta?.content||'';
+          if(!ch)continue;
+          // 过滤 <think>...</think>
+          if(inThink){
+            const end=ch.indexOf('</think>');
+            if(end>=0){inThink=false;ch=ch.slice(end+8);}
+            else continue;
+          }
+          const start=ch.indexOf('<think>');
+          if(start>=0){
+            pending+=ch.slice(0,start);
+            inThink=true;
+            const end=ch.indexOf('</think>',start);
+            if(end>=0){inThink=false;ch=ch.slice(end+8);}
+            else{scheduleFlush();continue;}
+          }
+          pending+=ch; scheduleFlush();
+        }catch(_){}
       }
     }
-  }catch(err){
-    body.textContent=`这是「${hex.guaN}」卦${hex.moving.length>0?`，变为「${hex.biaN}」卦`:'，六爻皆静，局势稳定'}。\n\n${d.shi?`代表你自身的爻处于${['旺','相'].includes(d.shi?.wang)?'较强的状态':'偏弱的状态'}，`:''}${['旺','相'].includes(d.shi?.wang)?'主动出击有利。':'这时候稳住、等待时机更好。'}\n\n${d.moving.length>0?'卦中有变动，说明事情还在变化，方向尚未确定，耐心观察。':'卦象平静，变化不大，适合守待，不要强行推进。'}\n\n【平】\n\n近期顺其自然，不必强求结果。等待合适时机，再做决定。`;
+    if(pending)body.textContent+=pending;
+  }
+
+  let success=false;
+  for(const api of APIS){
+    try{
+      stat.textContent = api.url.includes('minimax') ? '正在连接备用 AI…' : '正在连接 AI…';
+      const ac=new AbortController();
+      const timer=setTimeout(()=>ac.abort(), api.timeout);
+      const resp=await fetch(api.url,{method:'POST',signal:ac.signal,headers:api.headers,body:JSON.stringify(api.body)});
+      clearTimeout(timer);
+      if(!resp.ok)throw new Error('http '+resp.status);
+      await streamRead(resp);
+      success=true; break;
+    }catch(e){
+      if(APIS.indexOf(api)<APIS.length-1) continue; // 尝试下一个
+    }
+  }
+  if(!success){
+    body.textContent=`这是「${hex.guaN}」卦${hex.moving.length>0?`，变为「${hex.biaN}」卦`:'，六爻皆静，局势稳定'}。\n\n${d.shi?`代表你自身的爻${['旺','相'].includes(d.shi?.wang)?'状态较强，可主动出击':'气势稍弱，宜静待时机'}。`:''}\n\n${d.moving.length>0?'卦中有动爻，局势处于变化之中，耐心观察为上。':'卦象平静，适合守待，不要强行推进。'}\n\n【平】\n\n顺其自然，静待时机，心中有数。`;
   }
 
   body.classList.remove('stream');
   // 解析吉凶标签并渲染醒目 badge
   renderJiXiong(body);
+  // 恢复粒子动画
+  if(window.stardustResume)window.stardustResume();
   dot.classList.remove('thinking');dot.style.background='var(--good)';
   stat.textContent='解读完成';
 }
@@ -940,10 +999,16 @@ function hide(id){document.getElementById(id).classList.add('hidden')}
         ctx.fill();
       }
     }
-    requestAnimationFrame(draw);
+    window.__stardustRaf=requestAnimationFrame(draw);
   }
+  // 手机端粒子密度减半，省 GPU
+  if(window.innerWidth<=480){particles.length=0;particles.push(...particles.slice(0,50));}
   draw();
 })();
+// 暴露给外部：AI读取时暂停/恢复粒子
+window.stardustPause=()=>{if(window.__stardustRaf){cancelAnimationFrame(window.__stardustRaf);window.__stardustRaf=null;}};
+window.stardustResume=()=>{if(!window.__stardustRaf){const c=document.getElementById('stardust');if(c)c.dispatchEvent(new Event('resume'));}};
+
 
 // ✦ 吉凶粒子爆炸
 function burstJxParticles(){
